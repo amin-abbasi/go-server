@@ -1,44 +1,44 @@
 # User Authentication and Management API
+
 This Go application is an API built with Gin framework that manages user authentication and provides endpoints to handle user creation, login, and retrieval.
 
 ## Features
-User Creation: Allows the creation of new users with unique usernames.
-User Login: Authenticates users based on their username and password.
-Token-based Authentication: Utilizes JWT (JSON Web Token) for authentication of protected endpoints.
 
-### Endpoint Details:
- - /ping: Endpoint to test the API availability.
- - /user/:name: GET endpoint to retrieve user details based on username.
- - /login: POST endpoint for user authentication and token generation.
- - /admin/user: POST endpoint to create a new user (protected by authentication).
- - /admin Endpoints: Protected endpoints accessible only with a valid JWT token.
+- **User Creation:** Allows the creation of new users with unique usernames.
+- **User Login:** Authenticates users based on their username and password.
+- **Token-based Authentication:** Utilizes JWT (JSON Web Token) for authentication of protected endpoints.
+
+### Endpoint Details
+
+- `/ping`: Endpoint to test the API availability.
+- `/user/:name`: GET endpoint to retrieve user details based on username.
+- `/login`: POST endpoint for user authentication and token generation.
+- `/admin/user`: POST endpoint to create a new user (protected by authentication).
+- `/admin` Endpoints: Protected endpoints accessible only with a valid JWT token.
 
 ## Usage
 
-### Installation:
+### Installation
 
-Clone the repository.
-Install required dependencies: `go get github.com/gin-gonic/gin github.com/dgrijalva/jwt-go`
+1. Clone the repository.
+2. Install required dependencies: `go get github.com/gin-gonic/gin/v4 github.com/dgrijalva/jwt-go`
+3. Run the Application: `go run index.go` to start the server on port 4000.
 
-Run the Application:
+### API Endpoints
 
-Run `go run main.go` to start the server on port 4000.
+- `GET /ping`: Tests if the server is running.
+- `GET /user/:name`: Retrieves user details by providing the username.
+- `POST /login`: Authenticates users by providing a JSON payload with username and password.
+- `POST /admin/user`: Creates a new user with a unique username. This endpoint is protected and requires a valid JWT token in the Authorization header (Bearer token).
 
-### API Endpoints:
+### Protected Endpoints
 
-- GET /ping: Tests if the server is running.
-- GET /user/:name: Retrieves user details by providing the username.
-- POST /login: Authenticates users by providing a JSON payload with username and password.
-- POST /admin/user: Creates a new user with a unique username. This endpoint is protected and requires a valid JWT token in the Authorization header (Bearer token).
-
-### Protected Endpoints:
-
-Endpoints under /admin are protected and require a valid JWT token in the Authorization header to access.
+Endpoints under `/admin` are protected and require a valid JWT token in the Authorization header to access.
 
 
 ### Sample Usage
 
-User Creation:
+**User Creation:**
 ```bash
 curl -X POST http://localhost:4000/admin/user \
      -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
@@ -50,8 +50,7 @@ curl -X POST http://localhost:4000/admin/user \
      }'
 ```
 
-User Login:
-
+**User Login:**
 ```bash
 curl -X POST http://localhost:4000/login \
      -H "Content-Type: application/json" \

@@ -1,6 +1,6 @@
 # User Authentication and Management API
 
-This Go application is an API built with Echo framework that manages user authentication and provides endpoints to handle user creation, login, and retrieval.
+This Go application is an API built with Fiber framework that manages user authentication and provides endpoints to handle user creation, login, and retrieval.
 
 ## Features
 
@@ -21,7 +21,7 @@ This Go application is an API built with Echo framework that manages user authen
 ### Installation
 
 1. Clone the repository.
-2. Install required dependencies: `go get github.com/labstack/echo/v4 github.com/dgrijalva/jwt-go`
+2. Install required dependencies: `go get github.com/labstack/Fiber/v4 github.com/dgrijalva/jwt-go`
 3. Run the Application: `go run index.go` to start the server on port 4000.
 
 ### API Endpoints
@@ -62,4 +62,4 @@ curl -X POST http://localhost:4000/login \
 
 Feel free to modify and expand upon this application to suit your specific requirements.
 
-For further information on available endpoints and functionality, refer to the code documentation and Echo framework documentation.
+For further information on available endpoints and functionality, refer to the code documentation and Fiber framework documentation.

@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 var (
@@ -21,95 +22,67 @@ type User struct {
 	Password string `json:"password"`
 }
 
-// Initialize the Gin router and define routes
-func setupRouter() *gin.Engine {
-	router := gin.Default()
-
-	router.GET("/ping", pingHandler)
-	router.GET("/user/:name", getUserHandler)
-	router.POST("/login", loginHandler)
-
-	authorized := router.Group("/admin")
-	authorized.Use(authMiddleware())
-	authorized.POST("/user", createUserHandler)
-
-	return router
-}
-
-// Ping handler
-func pingHandler(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "pong")
-}
-
-// Get user by name handler
-func getUserHandler(ctx *gin.Context) {
+func getUser(ctx echo.Context) error {
 	username := ctx.Param("name")
 	value, ok := db[username]
 	if ok {
-		ctx.JSON(http.StatusOK, gin.H{"username": username, "value": value})
-	} else {
-		ctx.JSON(http.StatusOK, gin.H{"username": username, "status": "no value"})
+		return ctx.JSON(http.StatusOK, map[string]interface{}{"username": username, "value": value})
 	}
+	return ctx.JSON(http.StatusOK, map[string]interface{}{"username": username, "status": "no value"})
 }
 
-// Login handler
-func loginHandler(ctx *gin.Context) {
+func login(ctx echo.Context) error {
 	var user User
-	if err := ctx.ShouldBindJSON(&user); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if err := ctx.Bind(&user); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]interface{}{"error": err.Error()})
 	}
 
+	// Get user from DB
 	storedUser, ok := db[user.UserName]
+
+	// Validate credentials (this is a simple example, use your authentication logic here)
 	if ok && storedUser.Password == user.Password {
-		tokenString := generateToken(user.UserName)
+		token := jwt.New(jwt.SigningMethodHS256)
+		claims := token.Claims.(jwt.MapClaims)
+		claims["username"] = user.UserName
+		claims["exp"] = time.Now().Add(time.Hour * 24).Unix() // Token expiration time
+
+		tokenString, err := token.SignedString(secretKey)
+		if err != nil {
+			return ctx.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "error generating token"})
+		}
+
+		// adds user in db
 		db[user.UserName] = user
-		ctx.JSON(http.StatusOK, gin.H{"token": tokenString})
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
-	}
-}
 
-// Generate JWT token
-func generateToken(username string) string {
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["username"] = username
-	claims["exp"] = time.Now().Add(time.Hour * 24).Unix() // Token expiration time
-
-	tokenString, err := token.SignedString(secretKey)
-	if err != nil {
-		panic("error generating token")
+		return ctx.JSON(http.StatusOK, map[string]interface{}{"token": tokenString})
 	}
 
-	return tokenString
+	return ctx.JSON(http.StatusUnauthorized, map[string]interface{}{"error": "invalid credentials"})
 }
 
-// Create user handler
-func createUserHandler(ctx *gin.Context) {
+func createUser(ctx echo.Context) error {
 	var user User
-	if err := ctx.ShouldBindJSON(&user); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if err := ctx.Bind(&user); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]interface{}{"error": err.Error()})
 	}
 
+	// Check if the username already exists in the db
 	if _, exists := db[user.UserName]; exists {
-		ctx.JSON(http.StatusConflict, gin.H{"error": "username already exists"})
-		return
+		return ctx.JSON(http.StatusConflict, map[string]interface{}{"error": "username already exists"})
 	}
 
+	// adds user in db
 	db[user.UserName] = user
-	ctx.JSON(http.StatusOK, gin.H{"status": "ok", "user": user})
+	return ctx.JSON(http.StatusOK, map[string]interface{}{"status": "ok", "user": user})
 }
 
-// JWT authentication middleware
-func authMiddleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		tokenString := strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer ")
+func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		tokenString := ctx.Request().Header.Get("Authorization")
+		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 		if tokenString == "" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
-			ctx.Abort()
-			return
+			return ctx.JSON(http.StatusUnauthorized, map[string]interface{}{"error": "missing token"})
 		}
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -117,19 +90,35 @@ func authMiddleware() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-			ctx.Abort()
-			return
+			return ctx.JSON(http.StatusUnauthorized, map[string]interface{}{"error": "invalid token"})
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
 		ctx.Set("claims", claims)
-		ctx.Next()
+		return next(ctx)
 	}
 }
 
 func main() {
 	db["amin"] = User{UserName: "amin", Password: "123"}
-	router := setupRouter()
-	router.Run(":4000")
+
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Routes
+	e.GET("/ping", func(ctx echo.Context) error {
+		return ctx.String(http.StatusOK, "pong")
+	})
+	e.GET("/user/:name", getUser)
+	e.POST("/login", login)
+
+	authorized := e.Group("/admin")
+	authorized.Use(authMiddleware)
+	authorized.POST("/user", createUser)
+
+	// Start server
+	e.Logger.Fatal(e.Start(":4000"))
 }

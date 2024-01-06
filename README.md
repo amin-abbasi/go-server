@@ -22,7 +22,7 @@ This Go application is an API built with Echo framework that manages user authen
 
 1. Clone the repository.
 2. Install required dependencies: `go get github.com/labstack/echo/v4 github.com/dgrijalva/jwt-go`
-3. Run the Application: `go run main.go` to start the server on port 4000.
+3. Run the Application: `go run index.go` to start the server on port 4000.
 
 ### API Endpoints
 
